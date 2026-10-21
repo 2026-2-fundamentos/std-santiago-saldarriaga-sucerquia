@@ -1,3 +1,7 @@
+import os
+import pandas as pd
+
+
 def pregunta_03():
     """
     Usando `data/tbl0.tsv`, cuente cuántos registros hay para cada categoría
@@ -7,10 +11,17 @@ def pregunta_03():
     Ejemplo del formato de la respuesta:
 
         c1
-        A     8
-        B     7
-        C     5
+        A    8
+        B    7
+        C    5
         ...
     """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "tbl0.tsv")
 
-    raise NotImplementedError
+    df = pd.read_csv(file_path, sep="\t")
+    return df["c1"].value_counts().sort_index()
+
+
+if __name__ == "__main__":
+    print(pregunta_03())

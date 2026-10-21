@@ -1,3 +1,7 @@
+import os
+import pandas as pd
+
+
 def pregunta_11():
     """
     En `data/tbl1.tsv`, cada valor de la columna `c0` aparece en varias
@@ -14,5 +18,20 @@ def pregunta_11():
         2    2  a,c,e,f
         ...
     """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "tbl1.tsv")
 
-    raise NotImplementedError
+    df = pd.read_csv(file_path, sep="\t")
+
+    # Agrupar por c0, ordenar alfabéticamente las letras de c4 y unirlas con comas
+    res = (
+        df.groupby("c0")["c4"]
+        .apply(lambda x: ",".join(sorted(x)))
+        .reset_index()
+    )
+
+    return res
+
+
+if __name__ == "__main__":
+    print(pregunta_11())
