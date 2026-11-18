@@ -1,0 +1,6 @@
+model,test_mse
+horsepower_model,30.965374890506695
+linear_model,10.953502656917813
+linear_flexible_model,8.50896767483206
+mlp_horsepower,27.495614054956878
+mlp,9.033597805967725
