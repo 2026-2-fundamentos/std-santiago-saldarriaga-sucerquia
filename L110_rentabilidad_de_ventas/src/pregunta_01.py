@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 
@@ -42,12 +43,120 @@ def pregunta_01() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
        `lost_profit` de mayor a menor.
 
     La función también debe retornar las tres tablas, en el mismo orden.
-
-    Ejemplo del formato de `discount_summary.csv`:
-
-        discount_band,lines,sales,profit,profit_margin,loss_line_rate,...
-        0%,166,170539.05,29472.3789,0.1728,0.488,...
-        ...
     """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "superstore_orders.csv.gz")
+    submission_dir = os.path.join(base_dir, "submission")
+    os.makedirs(submission_dir, exist_ok=True)
 
-    raise NotImplementedError
+    df = pd.read_csv(file_path, compression="gzip", sep=None, engine="python")
+    df.columns = df.columns.str.strip()
+
+    for col in ["Sales", "Profit", "Discount"]:
+        df[col] = pd.to_numeric(
+            df[col].astype(str).str.replace(",", ".", regex=False).str.strip(),
+            errors="coerce",
+        )
+
+    df["is_loss"] = df["Profit"] < 0
+    df["loss_amount"] = (-df["Profit"]).where(df["is_loss"], 0.0)
+
+    total_lines = len(df)
+    total_orders = df["Order ID"].nunique()
+    total_sales = df["Sales"].sum()
+    total_profit = df["Profit"].sum()
+    loss_lines = int(df["is_loss"].sum())
+
+    profitability_summary = pd.DataFrame(
+        [
+            {
+                "lines": total_lines,
+                "orders": total_orders,
+                "sales": total_sales,
+                "profit": total_profit,
+                "profit_margin": total_profit / total_sales,
+                "loss_lines": loss_lines,
+                "loss_line_rate": loss_lines / total_lines,
+                "lost_profit": df["loss_amount"].sum(),
+            }
+        ]
+    )
+
+    band_order = ["0%", "1%-5%", "6%-10%", "más de 10%"]
+    df["discount_band"] = pd.cut(
+        df["Discount"],
+        bins=[-float("inf"), 0.0, 0.05, 0.10, float("inf")],
+        labels=band_order,
+        right=True,
+    )
+
+    discount_summary = (
+        df.groupby("discount_band", observed=False)
+        .agg(
+            lines=("Order ID", "size"),
+            sales=("Sales", "sum"),
+            profit=("Profit", "sum"),
+            loss_lines=("is_loss", "sum"),
+            lost_profit=("loss_amount", "sum"),
+        )
+        .reindex(band_order)
+        .reset_index()
+    )
+    discount_summary["profit_margin"] = (
+        discount_summary["profit"] / discount_summary["sales"]
+    )
+    discount_summary["loss_line_rate"] = (
+        discount_summary["loss_lines"] / discount_summary["lines"]
+    )
+    discount_summary = discount_summary[
+        [
+            "discount_band",
+            "lines",
+            "sales",
+            "profit",
+            "profit_margin",
+            "loss_line_rate",
+            "lost_profit",
+        ]
+    ]
+
+    seg_cat = df.groupby(["Customer Segment", "Product Category"], as_index=False).agg(
+        lines=("Order ID", "size"),
+        sales=("Sales", "sum"),
+        profit=("Profit", "sum"),
+        lost_profit=("loss_amount", "sum"),
+    )
+    seg_cat = seg_cat[seg_cat["lines"] >= 100].copy()
+    seg_cat["profit_margin"] = seg_cat["profit"] / seg_cat["sales"]
+
+    priority_segments = (
+        seg_cat.sort_values("lost_profit", ascending=False)
+        .head(5)[
+            [
+                "Customer Segment",
+                "Product Category",
+                "lines",
+                "sales",
+                "profit",
+                "profit_margin",
+                "lost_profit",
+            ]
+        ]
+        .reset_index(drop=True)
+    )
+
+    profitability_summary.to_csv(
+        os.path.join(submission_dir, "profitability_summary.csv"), index=False
+    )
+    discount_summary.to_csv(
+        os.path.join(submission_dir, "discount_summary.csv"), index=False
+    )
+    priority_segments.to_csv(
+        os.path.join(submission_dir, "priority_segments.csv"), index=False
+    )
+
+    return profitability_summary, discount_summary, priority_segments
+
+
+if __name__ == "__main__":
+    print(pregunta_01())
