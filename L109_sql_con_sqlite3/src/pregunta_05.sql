@@ -24,3 +24,5 @@
 --
 --  Escriba su consulta debajo de esta línea.
 --
+
+select * from tbl0 where c02 in (100, 600);

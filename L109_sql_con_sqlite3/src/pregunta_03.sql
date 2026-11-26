@@ -26,3 +26,5 @@
 --
 --  Escriba su consulta debajo de esta línea.
 --
+
+select * from tbl1 order by c14 asc limit 5;
